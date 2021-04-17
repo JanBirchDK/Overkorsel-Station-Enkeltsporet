@@ -4,3 +4,6 @@ Se wiki for en beskrivelse af projektet.
 Se koncept for det overordnede design af af en model for overkørsel.  
 Se specifikation for det detaljerede design af en model for overkørsel.  
 Se tilstandsdiagram, som grafisk præsenterer overkørslens funktion.
+## Version 0.1
+Versionen er første trin i udvikling af overkørsel til modeljernbane.  
+Det er en demo model, som viser at overkørsel er på vej. 
