@@ -9,3 +9,4 @@ Versionen er første trin i udvikling af overkørsel til modeljernbane.
 Det er en demo model, som viser at overkørsel er på vej. 
 ## Version 0.2
 Design på konceptniveau er lagt op.
+Se branch Pre 0.2
