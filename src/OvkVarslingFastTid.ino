@@ -1,209 +1,144 @@
 /*
  * Projekt: Overkørsel st. enkeltsporet strækning
  * Produkt: Varslingsanlæg faste tider
- * Version: 0.1
+ * Version: 0.2
  * Type: Program
  * Programmeret af: Jan Birch
- * Opdateret: 11-04-2021
+ * Opdateret: 03-05-2021
  * GNU General Public License version 3
- * Noter:
+ * This file is part of "Varslingsanlæg faste tider".
+ * 
+ * "Varslingsanlæg faste tider" is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * "Varslingsanlæg faste tider" is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with "Varslingsanlæg faste tider".  If not, see <https://www.gnu.org/licenses/>.
+ *  
+ * Noter: 
  * Se koncept og specifikation for en detaljeret beskrivelse af programmet, formål og anvendelse.
  */
 
-// Der er behov for flere timere, det leverer biblioteket BlockNot 
-#include <BlockNot.h>
+// Kontakttyper for trykknap
+enum {NOPEN, NCLOSED};
+// Overkørslens betjeningsenheder konfigureres med en flanketype
+enum {DOWNFLANK, UPFLANK};
+// Overkørslens betjeningsenheder leverer
+enum {OFF, ON};
+// Overkørslens ydre enheder kan blive sat til
+enum {BLOCK, PASS};
 
-// En knap elektriske forbindelse
-enum contacType {NOPEN, NCLOSED};
+// Overkørslens erklæringer
+const byte MaxNoInputs = 0;
+const byte MaxNoOutputs = 0;
+const byte MaxNoStates = 5;
 
-// Ansvar: Denne klasse varetager al funktion af en trykknap. Software er et spejl af hardwarefunktion.
-// Aflæsning af hardware port. Filtrering af kontaktprel. Grænseflade til software.
-// Seqs: En knap løber igennem 2 trin, når der trykkes på den
-// Udløbstid for timer til kontaktprel bliver sat til 30msek
-// pin: Arduino portnr
-// bounceTimer: Timer til kontaktprel
-// value: Knappen er høj eller lav
-// seq: Knappens trin
-// polling(...): Gennemløb på tid
-// read(...): Udlæses knappens værdi
-class PushButton {
-private:
-  enum Seqs {STABLE, BOUNCE};
-  enum {BOUNCTIME = 30};
-  byte pin;
-  BlockNot bounceTimer;
-  bool value;
-  Seqs seq;
-public:
-  PushButton(byte a_pin, contacType a_contact);
-  void polling(void);
-  bool read(void);
-};
+// Overkørslens kernemoduler
+#include "OvkTiming.h"
+#include "OvkIOKernel.h"
 
-PushButton::PushButton(byte a_pin, contacType a_contact) : pin(a_pin), bounceTimer(BOUNCTIME), seq(STABLE) {
-  if (a_contact= NCLOSED) pinMode(pin, INPUT_PULLUP);
-  else pinMode(pin, INPUT);
-  value = digitalRead(pin);
-}
+// Hardware drivere til den overkørsel, som dette program leverer
+#include "OvkTrykknap.h"
+#include "OvkSimpleOnOff.h"
 
-// Knap går fra fast stilling til undervejs mod ny stilling
-// Der ventes en periode, for at udelukke kontaktprel
-// IO portens værdi aflæses
-void PushButton::polling(void){
-  switch (seq) {
-    case STABLE:
-      if (value != digitalRead(pin)) {
-        bounceTimer.reset();
-        seq = BOUNCE;
-      }
-    break;
-    case BOUNCE:
-      if (bounceTimer.firstTrigger() == true) {
-        value = digitalRead(pin);
-        seq = STABLE;
-      }
-    break;
-  }
-}
-
-bool PushButton::read(void){
-  return value;
-}
-
-//----------
-
-// Ansvar: Denne klasse varetager al funktion af simpel tændt eller slukket udgang. Software er et spejl af hardwarefunktion.
-// Udlæsning til hardware port. Grænseflade til software.
-// pin: Arduino portnr
-// write(...): Indlæse værdi
-class SimpleOnOff {
-private:
-  byte pin;              // Arduino pin
-public:
-  SimpleOnOff(byte a_pin, bool a_value);
-  void write(bool a_value);
-};
-
-SimpleOnOff::SimpleOnOff(byte a_pin, bool a_value = LOW) : pin(a_pin) {
-  pinMode(pin, OUTPUT);
-  digitalWrite(pin, a_value);
-}
-
-void SimpleOnOff::write(bool a_value) {
-  digitalWrite(pin, a_value);
-}
-
-//----------
-
-// Ansvar: Denne klasse varetager blinkerfunktionen.
-// Periodetid 1000msek
-// timer: Beregner tid
-// value: Blinkerens værdi lav eller høj
-// isChanged: Sat hvis skiftet værdi
-// polling(...): Gennemløb på tid
-// hasUpdate(...): Viser om blinker har skiftet værdi
-// read(...): Udlæses blinkerens værdi
-// resetTrigger(...): Når brugere af blinker er færdige med opdatering, så resættes besked om trigger
-class TheBlinker {
-private:
-  enum {PERIOD = 1000};
-  BlockNot timer;
-  bool value;
-  bool isChanged;
-public:
-  TheBlinker(void);
-  void polling(void);
-  bool hasUpdate(void);
-  bool read(void);
-  void resetTrigger(void);
-};
-
-TheBlinker::TheBlinker(void) : timer(PERIOD), value(LOW), isChanged(false) {}
-
-void TheBlinker::polling(void) {
-  if((isChanged = timer.triggered()) == true) value = !value;
-}
-
-bool TheBlinker::hasUpdate(void) {
-  return isChanged;
-}
-
-bool TheBlinker::read(void) {
-  return value;
-}
-
-void TheBlinker::resetTrigger(void) {
-  isChanged = false;
-}
-
-TheBlinker blinker;  // Når argumentliste er void skal der ikke paranteser på objekt
-
-//----------
-
-// Opsætning af konstanter og specifikationer til overkørsel
-// Arduino pins
-struct {
-  const int ManuelKnap = 2;
-  const int OUSignAB = 7;
-  const int OUSignBA = 8;
-  const int VejKlokker = 10;
-  const int VejLys = 11;
-} ARDPin;
-
-// Knap
-PushButton manuelKnap(ARDPin.ManuelKnap, NCLOSED); // Knappen er forbundet til 5V og normally closed
-
-// Uordenssignaler
-SimpleOnOff OUSignBA(ARDPin.OUSignBA, HIGH);
-SimpleOnOff OUSignAB(ARDPin.OUSignAB, HIGH);
-SimpleOnOff VejKlokker(ARDPin.VejKlokker);
-SimpleOnOff VejLys(ARDPin.VejLys);
+// Overkørsel IO til den overkørsel, som dette program leverer
+// Reserveret til senere brug
 
 // Tilstandsmaskine
-enum States {IKKESIKRET, SIKRET, OPLOES, BILISTTID};
-States state;  // Aktuel tilstand
+// Reserveret til include: tilstandsmaskine
+
+// Opsætning af overkørsel
+// Reserveret til include: Overkørsel kerne
+
+// Arduino pins
+struct {
+  const byte ManuelKnap = 2;
+  const byte OUSignAB = 7;
+  const byte OUSignBA = 8;
+  const byte VejKlokker = 10;
+  const byte VejLys = 11;
+} ARDPin;
+
+// Hardware drivere instantieres
+t_PushButton manuelKnap(ARDPin.ManuelKnap, NCLOSED); // Knappen er forbundet til 5V og normally closed
+t_SimpleOnOff OUSignAB(ARDPin.OUSignAB, HIGH);
+t_SimpleOnOff OUSignBA(ARDPin.OUSignBA, HIGH);
+t_SimpleOnOff VejKlokker(ARDPin.VejKlokker);
+t_SimpleOnOff VejLys(ARDPin.VejLys);
+
+// Hardware drivere kaldes via grænseflade
+t_DigitalInDrv *p_manuelKnap;
+t_DigitalOutDrv *p_OUSignAB;
+t_DigitalOutDrv *p_OUSignBA;
+t_DigitalOutDrv *p_VejKlokker;
+t_DigitalOutDrv *p_VejLys;
+
+// Styring af blink
+  bool wasHigh = true;
+
+// Tilstandsmaskine
+enum {IKKESIKRET, FORRING, SIKRET, OPLOES, BILISTTID};
+byte state;  // Aktuel tilstand
 // Tider for tilstande
 struct {
-  const unsigned long Sikret = 15000, Oploes = 15000, Bilist = 10000;
+  const bool inSeconds = true;
+  const unsigned long Forring = 1, Sikret = 15, Oploes = 15, Bilist = 10;
 } stateTimes;
-BlockNot stateTimer(stateTimes.Sikret);
+t_ClockWork stateTimer;
 
 void setup() {
   // put your setup code here, to run once:
+// Tilkobling af hardware drivere
+  p_manuelKnap = &manuelKnap;
+  p_OUSignAB = &OUSignAB;
+  p_OUSignBA = &OUSignBA;
+  p_VejKlokker = &VejKlokker;
+  p_VejLys = &VejLys;
 // Start tilstandsmaskine
   state = IKKESIKRET;
 //  Serial.begin(9600);
-// Serial.println("bouncedw");
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-// Udfør næste polling
-  blinker.polling();
-  manuelKnap.polling();
+  Clock::pendulum();
+  Blinker::doClockCycle();
+  manuelKnap.doClockCycle();
 // Kør tilstandsmaskine
   switch (state) {
     case IKKESIKRET:
-      if (manuelKnap.read() == false) {
-        OUSignAB.write(LOW);
-        OUSignBA.write(LOW);
-        stateTimer.setDuration(stateTimes.Sikret);
+      if (p_manuelKnap->read() == LOW) {
+        stateTimer.setDuration(stateTimes.Forring, stateTimes.inSeconds);
+        state = FORRING;
+      }
+    break;
+    case FORRING:
+      if (stateTimer.triggered() == true) {
+        stateTimer.setDuration(stateTimes.Sikret, stateTimes.inSeconds);
+        p_OUSignAB->write(LOW);
+        p_OUSignBA->write(LOW);
         state = SIKRET;
       }
     break;
     case SIKRET:
       if (stateTimer.triggered() == true) {
-        OUSignAB.write(HIGH);
-        OUSignBA.write(HIGH);
-        stateTimer.setDuration(stateTimes.Oploes);
+        p_OUSignAB->write(HIGH);
+        p_OUSignBA->write(HIGH);
+        stateTimer.setDuration(stateTimes.Oploes, stateTimes.inSeconds);
         state = OPLOES;      
       }
     break;
     case OPLOES:
       if (stateTimer.triggered() == true) {
-        VejKlokker.write(LOW);
-        VejLys.write(LOW);
-        stateTimer.setDuration(stateTimes.Bilist);
+        p_VejKlokker->write(LOW);
+        p_VejLys->write(LOW);
+        stateTimer.setDuration(stateTimes.Bilist, stateTimes.inSeconds);
         state = BILISTTID;
       }
     break;
@@ -212,13 +147,11 @@ void loop() {
     break;
   }
 // Vejlys og klokker er tændt, når overkørsel er tændt
-  if ((state == SIKRET) || (state == OPLOES)) {
-    if (blinker.hasUpdate() == true) {
-      VejKlokker.write(blinker.read());
-      VejLys.write(blinker.read());
-      blinker.resetTrigger();
-    }    
+  if ((state == FORRING) || (state == SIKRET) || (state == OPLOES)) {
+    if (blinkerTriggered() == true) {
+      p_VejKlokker->write(wasHigh);
+      p_VejLys->write(wasHigh);
+      wasHigh = !wasHigh;
+    }
   }
-// Langsom polling er nyttig ved debug
-//   delay(100);
 }
