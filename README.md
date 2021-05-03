@@ -8,7 +8,6 @@ Se tilstandsdiagram, som grafisk præsenterer overkørslens funktion.
 Versionen er første trin i udvikling af overkørsel til modeljernbane.  
 Det er en demo model, som viser at overkørsel er på vej. 
 ## Version 0.2
-Design på konceptniveau er lagt op.  
-Design på specifikationsniveau er lagt op.  
-Diagram og vejledning til hardwaremodel er lagt op.  
-Se branch Pre 0.2
+Versionen grundlægger software til en model for styring og overvågning  
+af en overkørsel til en modelbane.  
+Moduler for timing og hardware drivere er færdige.  
