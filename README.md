@@ -11,3 +11,8 @@ Det er en demo model, som viser at overkørsel er på vej.
 Versionen grundlægger software til en model for styring og overvågning  
 af en overkørsel til en modelbane.  
 Moduler for timing og hardware drivere er færdige.  
+## Version 0.3
+Med denne version bliver der leveret software komponenter til styring og overvågning af en overkørsel.  
+Betjening og sensorer: Manuel betjening, togvejsindstilling, tændsted.  
+Overkørslens ydre enheder: Vejsignal, vejklokke, banesignaler.  
+Design er lagt op.
