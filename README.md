@@ -11,7 +11,7 @@ Model er bygget på breadboard og styres af en Arduino Uno. Modellen leverer.
 ## Versionshistorik
 Version	| Dato	   | Beskrivelse                               |
 --------|----------|-------------------------------------------
-1.0 |22-05-2021|Første version                             |
+1.0 |13-06-2021|Første version                             |
 
 # Trafikal beskrivelse
 Overkørsel består af:
@@ -36,6 +36,7 @@ Overkørsel kan være i følgende tilstande.
 3. Vejbomme ned.
    1. Vejbomme sænkes.
    2. Skifter tilstand efter 16 sekunder.
+   3. Vejklokker slukker.
 4. Sikret.
    1. Uordenssignal viser ”sikret”.
    2. Skifter tilstand efter 25 sekunder.
@@ -67,4 +68,4 @@ Prototype er opstillet på breadboard og får de I/O som er vist herover.
 Vejlys er styret af effektelektronik med 1 indgang koblet til Arduino.
 Vejlys og vejbomme forsynes med separat strømforsyning.
 
-Se i øvrigt ”Breadboard”. (Endnu ikke projekteret)
+Se i øvrigt ”Breadboard”.
